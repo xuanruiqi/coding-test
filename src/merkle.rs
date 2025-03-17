@@ -30,17 +30,17 @@ fn count_nodes(num_leaves: usize) -> usize {
 }
 
 fn concat_hashes(hashes: &Vec<[u8; 32]>) -> Vec<Vec<u8>> {
-    let mut cated_hashes = Vec::new();
+    let mut concatenated_hashes = Vec::new();
     for i in (0..hashes.len()).step_by(2) {
         if i != hashes.len() - 1 {
             let concatenated = [hashes[i].to_vec(), hashes[i+1].to_vec()].concat();
-            cated_hashes.push(concatenated);
+            concatenated_hashes.push(concatenated);
         } else {
             let last = hashes.last().unwrap();
-            cated_hashes.push([last.to_vec(), last.to_vec()].concat());
+            concatenated_hashes.push([last.to_vec(), last.to_vec()].concat());
         }
     }
-    cated_hashes
+    concatenated_hashes
 }
 
 fn hash_values(values: Vec<Vec<u8>>, tag: &Vec<u8>, hasher: &mut Sha256) -> Vec<[u8; 32]> {
@@ -92,8 +92,8 @@ impl MerkleTree {
         let hashes = hash_values(values, tag, &mut self.hasher);
         self.build_layer(&hashes);
         if hashes.len() > 1 {
-            let cated = concat_hashes(&hashes);
-            self.build_rec(cated, false);
+            let concatenated = concat_hashes(&hashes);
+            self.build_rec(concatenated, false);
         }
     }
 

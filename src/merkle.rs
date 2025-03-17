@@ -47,7 +47,8 @@ fn hash_values(values: Vec<Vec<u8>>, tag: &Vec<u8>, hasher: &mut Sha256) -> Vec<
     values.iter().map(|x| tagged_hash(&tag, x, hasher)).collect::<Vec<_>>()
 }
 
-/* Use the binary-tree-as-array trick, because our tree is always complete
+/*
+ * Use the binary-tree-as-array trick, because our tree is always complete
  * and the array approach is faster and easier to implement. Also, the number of
  * nodes required can be pre-computed, so we can pre-allocate.
  */
@@ -64,7 +65,7 @@ pub struct MerkleTree {
 // I choose to build the tree imperatively, because it is more natural for our representation
 impl MerkleTree {
     // Initialize the tree, create the arrays, but don't build any nodes
-    fn init_tree(&mut self, num_leaves: usize) {
+    fn initialize(&mut self, num_leaves: usize) {
         let num_nodes = count_nodes(num_leaves);
         self.nodes = vec![[0; 32]; num_nodes];
         self.total_nodes = num_nodes;
@@ -109,7 +110,7 @@ impl MerkleTree {
             total_nodes: 0,
             built_nodes: 0
         };
-        tree.init_tree(values.len());
+        tree.initialize(values.len());
         tree.build_rec(values, true);
         tree
     }

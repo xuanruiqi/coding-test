@@ -1,3 +1,8 @@
+//! A simple Merkle tree implementation
+//! 
+//! Given an array of byte vectors, this module provides functions to build a Merkle tree,
+//! compute the Merkle root, and compute the Merkle proof for a given leaf.
+
 use sha2::{digest::FixedOutputReset, Digest, Sha256};
 
 fn tagged_hash(tag: &[u8], data: &[u8], hasher: &mut Sha256) -> [u8; 32]{
@@ -92,6 +97,9 @@ impl MerkleTree {
         }
     }
 
+    /// This function builds a Merkle tree from a vector of byte vectors, which represent the leaf values (unhashed!).
+    /// BIP340 compatible tagged hashing (SHA256) is used.
+    /// `leaf_tag` is the tag used for hashing the leaf nodes, and `branch_tag` is the tag used for hashing the branch nodes.
     pub fn build(values: Vec<Vec<u8>>, leaf_tag: Vec<u8>, branch_tag: Vec<u8>) -> MerkleTree {
         let mut tree = MerkleTree {
             nodes: Vec::new(),
@@ -106,6 +114,7 @@ impl MerkleTree {
         tree
     }
 
+    /// Returns the Merkle root of a given Merkle tree as a byte array of length 32 (i.e., 256 bits).
     pub fn merkle_root(&self) -> [u8; 32] {
         self.nodes[0]
     }

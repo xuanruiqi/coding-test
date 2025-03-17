@@ -67,9 +67,9 @@ impl MerkleTree {
 
     fn build_layer(&mut self, hashes: &Vec<[u8; 32]>) {
         // include a copy of the last hash if the layer has an odd number of nodes
-        print!("num hashes: {}\n", hashes.len());
+        // print!("num hashes: {}\n", hashes.len());
         let layer_nodes = if hashes.len() % 2 == 0 || hashes.len() == 1 { hashes.len() } else { hashes.len() + 1 };
-        print!("Total nodes: {}, Built nodes: {}, Layer nodes: {}\n", self.total_nodes, self.built_nodes, layer_nodes);
+        // print!("Total nodes: {}, Built nodes: {}, Layer nodes: {}\n", self.total_nodes, self.built_nodes, layer_nodes);
         let start = self.total_nodes - self.built_nodes - layer_nodes;
         let nodes = &mut self.nodes[start..start+layer_nodes];
         for i in 0..hashes.len() {

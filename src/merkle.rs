@@ -10,11 +10,6 @@ fn tagged_hash(tag: &[u8], data: &[u8], hasher: &mut Sha256) -> [u8; 32]{
     hasher.finalize_fixed_reset().into()
 }
 
-/* Strategy: use the binary-tree-as-array trick
- * Because it is fast and easy to implement. Also, the number of
- * nodes required can be pre-computed.
- */
-
 fn count_nodes(num_leaves: usize) -> usize {
     let mut num_nodes = 1;
     let mut n = num_leaves;
@@ -47,11 +42,16 @@ fn hash_values(values: Vec<Vec<u8>>, tag: &Vec<u8>, hasher: &mut Sha256) -> Vec<
     values.iter().map(|x| tagged_hash(&tag, x, hasher)).collect::<Vec<_>>()
 }
 
+/* Use the binary-tree-as-array trick, because our tree is always complete
+ * and the array approach is faster and easier to implement. Also, the number of
+ * nodes required can be pre-computed, so we can pre-allocate.
+ */
 #[derive(Debug)]
 pub struct MerkleTree {
     nodes: Vec<[u8; 32]>,
     hasher: Sha256,
-    tag: Vec<u8>,
+    leaf_tag: Vec<u8>,
+    branch_tag: Vec<u8>,
     total_nodes: usize, // total number of nodes in the tree
     built_nodes: usize // number of already built nodes
 }
@@ -82,25 +82,27 @@ impl MerkleTree {
         self.built_nodes += layer_nodes;
     }
 
-    fn build_rec(&mut self, values: Vec<Vec<u8>>) {
-        let hashes = hash_values(values, &self.tag, &mut self.hasher);
+    fn build_rec(&mut self, values: Vec<Vec<u8>>, is_leaf: bool) {
+        let tag = if is_leaf { &self.leaf_tag } else { &self.branch_tag };
+        let hashes = hash_values(values, tag, &mut self.hasher);
         self.build_layer(&hashes);
         if hashes.len() > 1 {
             let cated = concat_hashes(&hashes);
-            self.build_rec(cated);
+            self.build_rec(cated, false);
         }
     }
 
-    pub fn build(values: Vec<Vec<u8>>, tag: Vec<u8>) -> MerkleTree {
+    pub fn build(values: Vec<Vec<u8>>, leaf_tag: Vec<u8>, branch_tag: Vec<u8>) -> MerkleTree {
         let mut tree = MerkleTree {
             nodes: Vec::new(),
             hasher: Sha256::new(),
-            tag: tag,
+            leaf_tag,
+            branch_tag,
             total_nodes: 0,
             built_nodes: 0
         };
         tree.init_tree(values.len());
-        tree.build_rec(values);
+        tree.build_rec(values, true);
         tree
     }
 

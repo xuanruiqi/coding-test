@@ -51,6 +51,10 @@ fn hash_values(values: Vec<Vec<u8>>, tag: &Vec<u8>, hasher: &mut Sha256) -> Vec<
  * Use the binary-tree-as-array trick, because our tree is always complete
  * and the array approach is faster and easier to implement. Also, the number of
  * nodes required can be pre-computed, so we can pre-allocate.
+ * 
+ * We will support only Sha256 to allow for an implementation with less indirection.
+ * There will be a way to statically allocate the nodes generically since the node size
+ * is known based on the algorithm but this will involve more type-level constraints.
  */
 #[derive(Debug)]
 pub struct MerkleTree {

@@ -120,7 +120,7 @@ impl MerkleTree {
     }
 
     /// Returns the Merkle root of a given Merkle tree as a byte array of length 32 (i.e., 256 bits).
-    pub fn merkle_root(&self) -> [u8; 32] {
+    pub fn get_root(&self) -> [u8; 32] {
         self.nodes[0]
     }
 }

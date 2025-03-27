@@ -2,9 +2,7 @@
 //! 
 //! Given an array of byte vectors, this module provides functions to build a Merkle tree,
 //! compute the Merkle root, and compute the Merkle proof for a given leaf.
-
 use sha2::{digest::FixedOutputReset, Digest, Sha256};
-
 /*
  * It is more natural to make HASH_SIZE a const field of HashAlgorithm rather than a parameter.
  * However, since using associated constants in type expressions is not supported by stable Rust
@@ -27,20 +25,6 @@ impl HashAlgorithm<32> for Sha256Algorithm {
     }
 }
 
-fn count_nodes(num_leaves: usize) -> usize {
-    let mut num_nodes = 1;
-    let mut n = num_leaves;
-    while n > 1 {
-        if n % 2 != 0 {
-            n += 1;
-        }
-        num_nodes += n;
-        n = n / 2;
-    }
-    // print!{"Number of nodes: {}\n", num_nodes};
-    num_nodes
-}
-
 fn concat_hashes<const HASH_SIZE: usize>(hashes: &Vec<[u8; HASH_SIZE]>) -> Vec<Vec<u8>> {
     let mut concatenated_hashes = Vec::new();
     for i in (0..hashes.len()).step_by(2) {
@@ -59,11 +43,6 @@ fn hash_values<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>>(values: Vec<
     values.iter().map(|x| H::tagged_hash(&tag, x)).collect::<Vec<_>>()
 }
 
-// left child = 2i + 1, right child = 2i + 2, so we can minus 1 and (integer) divide by 2
-fn parent_index(index: usize) -> usize {
-    (index - 1) / 2
-}
-
 /*
  * Use the binary-tree-as-array trick, because our tree is always complete
  * and the array approach is faster and easier to implement. Also, the number of
@@ -76,53 +55,31 @@ fn parent_index(index: usize) -> usize {
  */
 #[derive(Debug)]
 pub struct MerkleTree<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>> {
-    nodes: Vec<[u8; HASH_SIZE]>,
+    layers: Vec<Vec<[u8; HASH_SIZE]>>,
     leaf_tag: Vec<u8>,
     branch_tag: Vec<u8>,
-    num_leaves: usize, // number of leaves
-    total_nodes: usize, // total number of nodes in the tree
-    built_nodes: usize, // number of already built nodes
-    _hasher: std::marker::PhantomData<H> // 
+    _hasher: std::marker::PhantomData<H> // a phantom field that serves as evidence for H
 }
 
 #[derive(Debug)]
-pub enum Position { Left, Right }
-pub struct MerkleProof<const HASH_SIZE: usize>(pub Vec<(Position, [u8; HASH_SIZE])>);
+pub enum MerkleProofItem<const HASH_SIZE: usize> {
+    Left([u8; HASH_SIZE]),
+    Right([u8; HASH_SIZE]),
+    None
+}
+pub struct MerkleProof<const HASH_SIZE: usize>(pub Vec<MerkleProofItem<HASH_SIZE>>);
 
-// I choose to build the tree imperatively, because it is more natural for our representation
 impl<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>> MerkleTree<HASH_SIZE, H> {
-    // Initialize the tree, create the arrays, but don't build any nodes
-    fn initialize(&mut self, num_leaves: usize) {
-        let num_nodes = count_nodes(num_leaves);
-        self.nodes = vec![[0; HASH_SIZE]; num_nodes];
-        self.total_nodes = num_nodes;
-        self.built_nodes = 0;
-    }
-
-    fn build_layer(&mut self, hashes: &Vec<[u8; HASH_SIZE]>) {
-        // include a copy of the last hash if the layer has an odd number of nodes
-        // print!("num hashes: {}\n", hashes.len());
-        let layer_nodes = if hashes.len() % 2 == 0 || hashes.len() == 1 { hashes.len() } else { hashes.len() + 1 };
-        // print!("Total nodes: {}, Built nodes: {}, Layer nodes: {}\n", self.total_nodes, self.built_nodes, layer_nodes);
-        let start = self.total_nodes - self.built_nodes - layer_nodes;
-        let nodes = &mut self.nodes[start..start+layer_nodes];
-        for i in 0..hashes.len() {
-            nodes[i] = hashes[i];
-        }
-        if hashes.len() % 2 != 0 && hashes.len() != 1 {
-            nodes[hashes.len()] = nodes[hashes.len() - 1];
-        }
-        self.built_nodes += layer_nodes;
-    }
-
     fn build_rec(&mut self, values: Vec<Vec<u8>>, is_leaf: bool) {
         let tag = if is_leaf { &self.leaf_tag } else { &self.branch_tag };
         let hashes = hash_values::<HASH_SIZE, H>(values, tag);
-        self.build_layer(&hashes);
         if hashes.len() > 1 {
-            let concatenated = concat_hashes(&hashes);
-            self.build_rec(concatenated, false);
-        }
+            let concatenated_hashes = concat_hashes::<HASH_SIZE>(&hashes);
+            self.layers.push(hashes);
+            self.build_rec(concatenated_hashes, false);
+        } else {
+            self.layers.push(hashes); // we've just got to the root, done
+        }        
     }
 
     /// This function builds a Merkle tree from a vector of byte vectors, which represent the leaf values (unhashed!).
@@ -130,63 +87,62 @@ impl<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>> MerkleTree<HASH_SIZE, 
     /// `leaf_tag` is the tag used for hashing the leaf nodes, and `branch_tag` is the tag used for hashing the branch nodes.
     pub fn build(values: Vec<Vec<u8>>, leaf_tag: Vec<u8>, branch_tag: Vec<u8>) -> MerkleTree<HASH_SIZE, H> {
         let mut tree = MerkleTree {
-            nodes: Vec::new(),
+            layers: Vec::new(),
             leaf_tag,
             branch_tag,
-            num_leaves: values.len(),
-            total_nodes: 0,
-            built_nodes: 0,
             _hasher: std::marker::PhantomData
         };
-        tree.initialize(values.len());
         tree.build_rec(values, true);
         tree
     }
 
     /// Returns the Merkle root of a given Merkle tree as a byte array of length 32 (i.e., 256 bits).
     pub fn get_root(&self) -> [u8; HASH_SIZE] {
-        self.nodes[0]
+        self.layers.last().unwrap()[0]
     }
 
-    // Get the sibling and position of a leaf
-    fn get_sibling(&self, index: usize) -> (Position, [u8; HASH_SIZE]) {
-        // if the index is even then this is a right leaf
-        if index % 2 == 0 {
-            (Position::Left, self.nodes[index - 1])
+    // Get the proof item for a given node in the tree
+    fn get_proof_item(&self, layer: usize, index: usize) -> MerkleProofItem<HASH_SIZE> {
+        println!("Layer: {}, index: {}", layer, index);
+        // this is a lone node without a sibling, so no proof required
+        if index > 1 && index == self.layers[layer].len() - 1 {
+            MerkleProofItem::None
+        // if the index within the layer is even, then this is a left leaf
+        } else if index % 2 == 0 {
+            MerkleProofItem::Right(self.layers[layer][index + 1])
         } else {
-            (Position::Right, self.nodes[index + 1])
+            MerkleProofItem::Left(self.layers[layer][index - 1])
         }
     }
 
     // build the proof by moving up the tree
     fn build_proof(&self, index: usize) -> MerkleProof<HASH_SIZE> {
-        let mut proof: Vec<(Position, [u8; HASH_SIZE])> = Vec::new();
-        let mut i = index;
-        while i > 0 {
-            let sibling = self.get_sibling(i);
-            proof.push(sibling);
-            i = parent_index(i);
-        }
-        MerkleProof(proof)
-    }
-
-    fn find_leaf(&self, hash: [u8; HASH_SIZE]) -> Option<usize> {
-        for i in (self.total_nodes - self.num_leaves + 1)..self.total_nodes {
-            if self.nodes[i] == hash {
-                return Some(i);
+        let mut proof = Vec::new();
+        let mut curr_index = index;
+        // the -1 is important, because the root is not needed
+        for i in 0..(self.layers.len() - 1) {
+            let proof_item = self.get_proof_item(i, curr_index);
+            curr_index /= 2;
+            match proof_item {
+                MerkleProofItem::None => {
+                    // this node has no sibling, don't need to include anything
+                    continue;
+                },
+                prf => {
+                    proof.push(prf);
+                }
             }
         }
-        None
+        MerkleProof(proof)
     }
 
     /// Given a value, return the Merkle proof for the leaf with that value if
     /// the value is in the tree, or None if the value is not in the tree.
     pub fn get_proof(&self, value: Vec<u8>) -> Option<MerkleProof<HASH_SIZE>> {
         let hash: [u8; HASH_SIZE] = H::tagged_hash(&self.leaf_tag, &value);
-        match self.find_leaf(hash) {
+        match self.layers[0].iter().position(|&x| x == hash) {
             Some(index) => Some(self.build_proof(index)),
             None => None
         }
     }
-
 }

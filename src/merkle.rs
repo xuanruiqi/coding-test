@@ -5,14 +5,14 @@
 
 use sha2::{digest::FixedOutputReset, Digest, Sha256};
 
-fn tagged_hash(tag: &[u8], data: &[u8], hasher: &mut Sha256) -> [u8; 32]{
-    hasher.reset();
+fn tagged_hash(tag: &[u8], data: &[u8]) -> [u8; 32]{
+    let mut hasher = Sha256::new();
     hasher.update(tag);
     let tag_hash: [u8; 32] = hasher.finalize_fixed_reset().into();
     let concatenated = [tag_hash.to_vec(), tag_hash.to_vec(), data.to_vec()].concat();
     hasher.reset();
     hasher.update(concatenated);
-    hasher.finalize_fixed_reset().into()
+    hasher.finalize().into()
 }
 
 fn count_nodes(num_leaves: usize) -> usize {
@@ -43,8 +43,8 @@ fn concat_hashes(hashes: &Vec<[u8; 32]>) -> Vec<Vec<u8>> {
     concatenated_hashes
 }
 
-fn hash_values(values: Vec<Vec<u8>>, tag: &Vec<u8>, hasher: &mut Sha256) -> Vec<[u8; 32]> {
-    values.iter().map(|x| tagged_hash(&tag, x, hasher)).collect::<Vec<_>>()
+fn hash_values(values: Vec<Vec<u8>>, tag: &Vec<u8>) -> Vec<[u8; 32]> {
+    values.iter().map(|x| tagged_hash(&tag, x)).collect::<Vec<_>>()
 }
 
 /*
@@ -59,7 +59,6 @@ fn hash_values(values: Vec<Vec<u8>>, tag: &Vec<u8>, hasher: &mut Sha256) -> Vec<
 #[derive(Debug)]
 pub struct MerkleTree {
     nodes: Vec<[u8; 32]>,
-    hasher: Sha256,
     leaf_tag: Vec<u8>,
     branch_tag: Vec<u8>,
     total_nodes: usize, // total number of nodes in the tree
@@ -94,7 +93,7 @@ impl MerkleTree {
 
     fn build_rec(&mut self, values: Vec<Vec<u8>>, is_leaf: bool) {
         let tag = if is_leaf { &self.leaf_tag } else { &self.branch_tag };
-        let hashes = hash_values(values, tag, &mut self.hasher);
+        let hashes = hash_values(values, tag);
         self.build_layer(&hashes);
         if hashes.len() > 1 {
             let concatenated = concat_hashes(&hashes);
@@ -108,7 +107,6 @@ impl MerkleTree {
     pub fn build(values: Vec<Vec<u8>>, leaf_tag: Vec<u8>, branch_tag: Vec<u8>) -> MerkleTree {
         let mut tree = MerkleTree {
             nodes: Vec::new(),
-            hasher: Sha256::new(),
             leaf_tag,
             branch_tag,
             total_nodes: 0,

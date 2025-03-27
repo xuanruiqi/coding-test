@@ -3,6 +3,7 @@
 //! Given an array of byte vectors, this module provides functions to build a Merkle tree,
 //! compute the Merkle root, and compute the Merkle proof for a given leaf.
 use sha2::{digest::FixedOutputReset, Digest, Sha256};
+use serde::{ser::SerializeSeq, Serialize};
 /*
  * It is more natural to make HASH_SIZE a const field of HashAlgorithm rather than a parameter.
  * However, since using associated constants in type expressions is not supported by stable Rust
@@ -67,6 +68,8 @@ pub enum MerkleProofItem<const HASH_SIZE: usize> {
     Right([u8; HASH_SIZE]),
     None
 }
+
+#[derive(Debug, Serialize)]
 pub struct MerkleProof<const HASH_SIZE: usize>(pub Vec<MerkleProofItem<HASH_SIZE>>);
 
 impl<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>> MerkleTree<HASH_SIZE, H> {
@@ -103,7 +106,6 @@ impl<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>> MerkleTree<HASH_SIZE, 
 
     // Get the proof item for a given node in the tree
     fn get_proof_item(&self, layer: usize, index: usize) -> MerkleProofItem<HASH_SIZE> {
-        println!("Layer: {}, index: {}", layer, index);
         // this is a lone node without a sibling, so no proof required
         if index > 1 && index == self.layers[layer].len() - 1 {
             MerkleProofItem::None
@@ -143,6 +145,31 @@ impl<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>> MerkleTree<HASH_SIZE, 
         match self.layers[0].iter().position(|&x| x == hash) {
             Some(index) => Some(self.build_proof(index)),
             None => None
+        }
+    }
+}
+
+impl<const HASH_SIZE: usize> Serialize for MerkleProofItem<HASH_SIZE> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            MerkleProofItem::Left(hash) => {
+                let mut seq = serializer.serialize_seq(Some(2))?;
+                seq.serialize_element(&0)?;
+                seq.serialize_element(&format!("0x{}", hex::encode(hash)))?;
+                seq.end()
+            },
+            MerkleProofItem::Right(hash) => {
+                let mut seq = serializer.serialize_seq(Some(2))?;
+                seq.serialize_element(&1)?;
+                seq.serialize_element(&format!("0x{}", hex::encode(hash)))?;
+                seq.end()
+            },
+            MerkleProofItem::None => {
+                serializer.serialize_none()
+            },
         }
     }
 }

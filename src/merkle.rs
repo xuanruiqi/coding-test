@@ -4,6 +4,7 @@
 //! compute the Merkle root, and compute the Merkle proof for a given leaf.
 use sha2::{digest::FixedOutputReset, Digest, Sha256};
 use serde::{ser::SerializeSeq, Serialize};
+use data_encoding::HEXLOWER;
 /*
  * It is more natural to make HASH_SIZE a const field of HashAlgorithm rather than a parameter.
  * However, since using associated constants in type expressions is not supported by stable Rust
@@ -160,13 +161,13 @@ impl<const HASH_SIZE: usize> Serialize for MerkleProofItem<HASH_SIZE> {
             MerkleProofItem::Left(hash) => {
                 let mut seq = serializer.serialize_seq(Some(2))?;
                 seq.serialize_element(&0)?;
-                seq.serialize_element(&format!("0x{}", hex::encode(hash)))?;
+                seq.serialize_element(&format!("0x{}", HEXLOWER.encode(hash)))?;
                 seq.end()
             },
             MerkleProofItem::Right(hash) => {
                 let mut seq = serializer.serialize_seq(Some(2))?;
                 seq.serialize_element(&1)?;
-                seq.serialize_element(&format!("0x{}", hex::encode(hash)))?;
+                seq.serialize_element(&format!("0x{}", HEXLOWER.encode(hash)))?;
                 seq.end()
             },
             MerkleProofItem::None => {
@@ -180,6 +181,6 @@ impl<const HASH_SIZE: usize> Serialize for MerkleRoot<HASH_SIZE> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: serde::Serializer {
-        serializer.serialize_str(&format!("0x{}", hex::encode(self.0)))
+        serializer.serialize_str(&format!("0x{}", HEXLOWER.encode(&self.0)))
     }
 }

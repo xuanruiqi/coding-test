@@ -72,6 +72,9 @@ pub enum MerkleProofItem<const HASH_SIZE: usize> {
 #[derive(Debug, Serialize)]
 pub struct MerkleProof<const HASH_SIZE: usize>(pub Vec<MerkleProofItem<HASH_SIZE>>);
 
+#[derive(Debug)]
+pub struct MerkleRoot<const HASH_SIZE: usize>(pub [u8; HASH_SIZE]);
+
 impl<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>> MerkleTree<HASH_SIZE, H> {
     fn build_rec(&mut self, values: Vec<Vec<u8>>, is_leaf: bool) {
         let tag = if is_leaf { &self.leaf_tag } else { &self.branch_tag };
@@ -100,8 +103,8 @@ impl<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>> MerkleTree<HASH_SIZE, 
     }
 
     /// Returns the Merkle root of a given Merkle tree as a byte array of length 32 (i.e., 256 bits).
-    pub fn get_root(&self) -> [u8; HASH_SIZE] {
-        self.layers.last().unwrap()[0]
+    pub fn get_root(&self) -> MerkleRoot<HASH_SIZE> {
+        MerkleRoot(self.layers.last().unwrap()[0])
     }
 
     // Get the proof item for a given node in the tree
@@ -152,8 +155,7 @@ impl<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>> MerkleTree<HASH_SIZE, 
 impl<const HASH_SIZE: usize> Serialize for MerkleProofItem<HASH_SIZE> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
-    {
+        S: serde::Serializer {
         match self {
             MerkleProofItem::Left(hash) => {
                 let mut seq = serializer.serialize_seq(Some(2))?;
@@ -171,5 +173,13 @@ impl<const HASH_SIZE: usize> Serialize for MerkleProofItem<HASH_SIZE> {
                 serializer.serialize_none()
             },
         }
+    }
+}
+
+impl<const HASH_SIZE: usize> Serialize for MerkleRoot<HASH_SIZE> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer {
+        serializer.serialize_str(&format!("0x{}", hex::encode(self.0)))
     }
 }

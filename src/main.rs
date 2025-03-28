@@ -19,7 +19,7 @@ fn test_merkle_proof() {
     let test_values = vec![b"aaa".to_vec(), b"bbb".to_vec(), b"ccc".to_vec(), b"ddd".to_vec(), b"eee".to_vec()];
     let tag = (b"Bitcoin_Transaction").to_vec();
     let tree = MerkleTree::<32, Sha256Algorithm>::build(test_values, tag.clone(), tag.clone());
-    let proof = tree.get_proof(b"ccc".to_vec());
+    let proof = tree.get_proof(b"eee".to_vec());
     match proof {
         Some(proof) => {
             let proof_json = serde_json::to_string(&proof).unwrap();

@@ -110,14 +110,15 @@ impl<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>> MerkleTree<HASH_SIZE, 
 
     // Get the proof item for a given node in the tree
     fn get_proof_item(&self, layer: usize, index: usize) -> MerkleProofItem<HASH_SIZE> {
-        // this is a lone node without a sibling, so no proof required
-        if index > 1 && index == self.layers[layer].len() - 1 {
-            MerkleProofItem::None
-        // if the index within the layer is even, then this is a left leaf
-        } else if index % 2 == 0 {
-            MerkleProofItem::Right(self.layers[layer][index + 1])
-        } else {
+        // this is a right node
+        if index % 2 == 1 {
             MerkleProofItem::Left(self.layers[layer][index - 1])
+        } else if index == self.layers[layer].len() - 1 {
+            // the number of nodes in this level is odd, so this is a lone node without a sibling
+            MerkleProofItem::None
+        } else {
+            MerkleProofItem::Right(self.layers[layer][index + 1])
+
         }
     }
 

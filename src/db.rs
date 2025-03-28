@@ -26,7 +26,7 @@ pub struct InMemoryDatabase<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>>
 }
 
 fn serialize_user(user_id: u64, balance: u64) -> Vec<u8> {
-    format!("({},{}", user_id, balance).into_bytes()
+    format!("({},{})", user_id, balance).into_bytes()
 }
 
 impl<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>> UserDatabase<HASH_SIZE, H, MerkleTree<HASH_SIZE, H>> for InMemoryDatabase<HASH_SIZE, H> {

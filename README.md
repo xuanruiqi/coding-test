@@ -1,11 +1,15 @@
 # Merkle Proof Web Service API
 
+I chose **Rust** as the language of implementation.
+
 ## Usage
 
 Use `cargo run` to start the server. The server runs on http://0.0.0.0:3000.
 
-* GET `/root`: returns the root of the Merkle tree as a hex string, beginning
-with `0x`.
+It responds to the following HTTP requests:
+
+* GET `/root`: returns the hex-encoded root of the Merkle tree as a
+string, beginning with `0x`.
 * GET `/proof/:id`: returns the Merkle proof for the user with user ID `id`.
 The response has the following format:
 ```json
@@ -19,7 +23,7 @@ The response has the following format:
 ```
 where `BALANCE_OF_USER` is the user's balance in integers. `LEFT OR RIGHT`
 is either the integer 0 (left node) or 1 (right node), and `HEX_HASH`
-is a hex string containing the node's hash value (again, begining with `0x`).
+is a hex-encoded string containing the node's hash value (again, begining with `0x`).
 
 If the user with ID `id` does not exist, a 404 NOT FOUND is returned.
 
@@ -35,7 +39,22 @@ I used the following external libraries (Rust crates):
 
 I have confirmed that all of them are actively maintained.
 
+## Suggestions for Improvement
+Currently, the service supports only retriving the Merkle root and the
+Merkle proof for a particular user. The following improvements are possible:
+
+* provide another endpoint that allows one to verify a Merkle proof;
+* provide an endpoint to add users, while dynamically recalculating all
+hashes efficiently by using an incremental Merkle tree;
+* cache Merkle proofs using an in-memory database like Redis to speed
+up retrieval.
+
 ## Design
+
+I chose to implement the project in Rust, since I feel that Rust is the closest
+to programming languages I am most comfortable with (OCaml and Haskell), and
+the Rust type system's strong support for generics can enable me to write a very
+extensible implementation.
 
 I tried to be as generic as possible in my design, using the full power of
 Rust's type system.

@@ -27,6 +27,16 @@ is a hex-encoded string containing the node's hash value (again, begining with `
 
 If the user with ID `id` does not exist, a 404 NOT FOUND is returned.
 
+## Tags
+
+v0.1 is the first working version to provide a functionally correct and working Merkle root
+computation function. However, the internal representation is not the same as the current one.
+
+v0.2 is the working version providing a working Merkle root computation funtion with the same internal
+representation.
+
+v1.1 is the final deliverable (working web API).
+
 ## External Libraries
 
 I used the following external libraries (Rust crates):

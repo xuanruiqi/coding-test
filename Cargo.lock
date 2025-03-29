@@ -137,10 +137,12 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "data-encoding",
+ "http-body-util",
  "serde",
  "serde_json",
  "sha2",
  "tokio",
+ "tower",
 ]
 
 [[package]]

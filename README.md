@@ -39,6 +39,11 @@ I used the following external libraries (Rust crates):
 
 I have confirmed that all of them are actively maintained.
 
+I use the following crates only for testing (not required for building or running):
+* [http-body-util](https://crates.io/crates/http-body-util)
+* [tower](https://crates.io/crates/tower)
+for some server testing utilities.
+
 ## Suggestions for Improvement
 Currently, the service supports only retriving the Merkle root and the
 Merkle proof for a particular user. The following improvements are possible:
@@ -47,7 +52,10 @@ Merkle proof for a particular user. The following improvements are possible:
 * provide an endpoint to add users, while dynamically recalculating all
 hashes efficiently by using an incremental Merkle tree;
 * cache Merkle proofs using an in-memory database like Redis to speed
-up retrieval.
+up retrieval;
+* add support for other hashing schemes, in case a similar service is needed
+in other use cases. The backend of the service is already generic and readily extensible
+to support this.
 
 ## Design
 

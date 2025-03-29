@@ -66,8 +66,7 @@ pub struct MerkleTree<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>> {
 #[derive(Debug)]
 pub enum MerkleProofItem<const HASH_SIZE: usize> {
     Left([u8; HASH_SIZE]),
-    Right([u8; HASH_SIZE]),
-    None
+    Right([u8; HASH_SIZE])
 }
 
 #[derive(Debug, Serialize)]
@@ -90,7 +89,7 @@ impl<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>> MerkleTree<HASH_SIZE, 
     }
 
     /// This function builds a Merkle tree from a vector of byte vectors, which represent the leaf values (unhashed!).
-    /// BIP340 compatible tagged hashing (SHA256) is used.
+    /// BIP340 compatible tagged hashing is used.
     /// `leaf_tag` is the tag used for hashing the leaf nodes, and `branch_tag` is the tag used for hashing the branch nodes.
     pub fn build(values: Vec<Vec<u8>>, leaf_tag: Vec<u8>, branch_tag: Vec<u8>) -> MerkleTree<HASH_SIZE, H> {
         let mut tree = MerkleTree {
@@ -109,15 +108,15 @@ impl<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>> MerkleTree<HASH_SIZE, 
     }
 
     // Get the proof item for a given node in the tree
-    fn get_proof_item(&self, layer: usize, index: usize) -> MerkleProofItem<HASH_SIZE> {
+    fn get_proof_item(&self, layer: usize, index: usize) -> Option<MerkleProofItem<HASH_SIZE>> {
         // this is a right node
         if index % 2 == 1 {
-            MerkleProofItem::Left(self.layers[layer][index - 1])
+            Some(MerkleProofItem::Left(self.layers[layer][index - 1]))
         } else if index == self.layers[layer].len() - 1 {
             // the number of nodes in this level is odd, so this is a lone node without a sibling
-            MerkleProofItem::None
+            None
         } else {
-            MerkleProofItem::Right(self.layers[layer][index + 1])
+            Some(MerkleProofItem::Right(self.layers[layer][index + 1]))
 
         }
     }
@@ -131,11 +130,11 @@ impl<const HASH_SIZE: usize, H: HashAlgorithm<HASH_SIZE>> MerkleTree<HASH_SIZE, 
             let proof_item = self.get_proof_item(i, curr_index);
             curr_index /= 2;
             match proof_item {
-                MerkleProofItem::None => {
+                None => {
                     // this node has no sibling, don't need to include anything
                     continue;
                 },
-                prf => {
+                Some(prf) => {
                     proof.push(prf);
                 }
             }
@@ -170,10 +169,7 @@ impl<const HASH_SIZE: usize> Serialize for MerkleProofItem<HASH_SIZE> {
                 seq.serialize_element(&1)?;
                 seq.serialize_element(&format!("0x{}", HEXLOWER.encode(hash)))?;
                 seq.end()
-            },
-            MerkleProofItem::None => {
-                serializer.serialize_none()
-            },
+            }
         }
     }
 }

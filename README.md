@@ -96,6 +96,11 @@ I decided that this is more desirable.
 Since the tree is not incremental, no mutative methods are exposed, although
 I use mutation internally to build the tree efficiently.
 
+The database consists of two parts: a key-value store, and the Merkle tree created from the
+user data. Since the tree is only updated infrequently (daily) and a full rebuild is required
+upon any database update, it seems logical to maintain the tree as part of the database,
+and create it during DB initialization.
+
 For the purposes of this task, we use an in-memory implementation for
 the database. However, in production, the database is very large, and
 might be stored, e.g. in a file, in a SQL or NoSQL database, or
